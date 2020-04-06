@@ -1,13 +1,18 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_pagewise/flutter_pagewise.dart';
+import 'util/http.dart';
 
-void main() => runApp(MyApp());
+void main() async {
+  runApp(MyApp());
+}
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'API pagination',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -20,7 +25,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Simple api pagination '),
     );
   }
 }
@@ -44,17 +49,21 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  // request limitation records
+  int limitByRequest = 15;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void login() {
+    // do login to api endpoint, then set dio token with endpoint returned token
+    // after login process
+    //
+    dioDefaults(token: "YOUR Authorization API TOKEN");
+  }
+
+  @override
+  void initState() {
+    // login method.
+    login();
+    super.initState();
   }
 
   @override
@@ -71,41 +80,33 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
-            ),
-          ],
-        ),
+      // use page wise library to simple unlimited scroll pagination ...
+      body: PagewiseListView(
+        pageSize: limitByRequest,
+        itemBuilder: (context, entry, _) {
+          return Column(
+            children: <Widget>[
+              ListTile(
+                leading: Icon(
+                  entry['gender'] == 'male' ? Icons.person : Icons.person_pin,
+                  color: Colors.brown[200],
+                ),
+                title: Text(
+                    "${entry['name']['title']}. ${entry['name']['first']} ${entry['name']['last']}"),
+                subtitle: Text(entry['email']),
+                trailing: CachedNetworkImage(
+                    imageUrl: '${entry['picture']['thumbnail']}'),
+              ),
+              Divider()
+            ],
+          );
+        },
+        pageFuture: (pageIndex) async {
+          var result =
+              await dio.get('?results=$limitByRequest&page=${pageIndex + 1}');
+          return result.data['results'];
+        },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
